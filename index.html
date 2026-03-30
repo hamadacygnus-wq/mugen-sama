@@ -3,96 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>商品リサーチツール（テスト版）</title>
+    <title>プロ向け商品リサーチツール</title>
     <style>
         body { font-family: "Helvetica Neue", Arial, sans-serif; background-color: #f4f7f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 400px; text-align: center; }
+        .container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 450px; text-align: center; }
         h1 { font-size: 1.5rem; color: #333; margin-bottom: 20px; }
-        input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
+        input, select { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
         button { width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; font-weight: bold; transition: background 0.3s; }
         button:hover { background-color: #0056b3; }
-        .note { font-size: 12px; color: #777; margin-top: 15px; text-align: left; }
-        .links { margin-top: 12px; text-align: left; }
-        .linksTitle { font-size: 12px; color: #666; margin-top: 6px; }
-        .links a { display: block; margin-top: 8px; color: #007bff; text-decoration: none; word-break: break-all; }
-        .links a:hover { text-decoration: underline; }
+        .note { font-size: 12px; color: #666; margin-top: 15px; text-align: left; line-height: 1.5; background: #fff3cd; padding: 10px; border-radius: 6px; }
+        .highlight { color: #d9534f; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h1>商品リサーチ検索</h1>
-    <input type="text" id="searchInput" placeholder="商品ID ジャンルを入力" autofocus>
+    <input type="text" id="searchInput" placeholder="商品ID（型番）を入力" autofocus>
+    
+    <select id="genreSelect">
+        <option value="時計">時計</option>
+        <option value="バッグ">バッグ</option>
+        <option value="スニーカー">スニーカー</option>
+    </select>
+
     <button onclick="launchSearch()">3サイトを一斉に開く</button>
     
     <div class="note">
-        ※初回実行時、ブラウザのURLバー右側に表示される「ポップアップブロック」を必ず<b>許可</b>に設定してください。Chromeでは1回の操作で複数タブが自動で開かないことがあるため、その場合は下のリンクをクリックしてください。
+        【使い方】<br>
+        1. 商品IDを入力し、ジャンルを選択して実行してください。<br>
+        2. <span class="highlight">e-auc</span>が開く際はIDが自動コピーされます。サイト上で貼り付けて検索してください。
     </div>
-    <div id="resultLinks" class="links"></div>
 </div>
 
 <script>
-function launchSearch() {
-    const val = document.getElementById('searchInput').value.trim();
-    if (!val) {
-        alert("キーワードを入力してください。");
-        return;
-    }
+async function launchSearch() {
+    const id = document.getElementById('searchInput').value.trim();
+    const genre = document.getElementById('genreSelect').value;
+    
+    if (!id) return alert("商品IDを入力してください。");
 
-    // スペースで分割（全角・半角両対応）
-    const parts = val.split(/[\s\u3000]+/);
-    const id = parts[0];
-    const genre = parts[1] || "";
     const fullQuery = id + " " + genre;
+    const encodedQuery = encodeURIComponent(fullQuery);
 
-    // テスト用の3サイト（ヤフオク、楽天、Amazon）
-    // 実際の依頼内容に合わせて、ここのURLを書き換えるだけでOK
-    const sites = [
-        {
-            label: 'ヤフオク',
-            // 落札相場を表示するように設定
-            url: `https://auctions.yahoo.co.jp/search/search?p=${encodeURIComponent(fullQuery)}&va=${encodeURIComponent(fullQuery)}&exflg=1&b=1&n=50&mode=2`,
-        },
-        {
-            label: '楽天市場',
-            url: `https://search.rakuten.co.jp/search/mall/${encodeURIComponent(fullQuery)}/`,
-        },
-        {
-            label: 'Amazon',
-            url: `https://www.amazon.co.jp/s?k=${encodeURIComponent(fullQuery)}`
-        }
+    // クリップボードにIDをコピー
+    try { await navigator.clipboard.writeText(id); } catch (err) {}
+
+    // すべてのジャンルで共通の3サイトを開く
+    const urls = [
+        // 1. soubakensaku.com (直接検索)
+        `https://soubakensaku.com/contents.php?c=search_thumb_m&keyword=${encodedQuery}&name_search=partial`,
+        // 2. オークファンプロ (直接検索)
+        `https://pro.aucfan.com/search/list?q=${encodedQuery}`,
+        // 3. e-auc (トップページを開く)
+        `https://e-auc.brand-auc.com/marketPriceItems`
     ];
 
-    // 各URLを新しいタブで開く（window.open連発だと制限される場合があるため）
-    // Chromeでは1回の操作で複数タブが自動開封されないことがあるので、
-    // 「最初の1件だけ自動で開く」＋「残りはクリック用リンクを表示」する
-    const linksDiv = document.getElementById('resultLinks');
-    linksDiv.innerHTML = `
-        <div class="linksTitle">開けなかった分はこちらをクリック</div>
-        ${sites.map(site => `<a href="${site.url}" target="_blank" rel="noopener noreferrer">${site.label}</a>`).join('')}
-    `;
-
-    if (sites.length > 0) {
-        const firstSite = sites[0];
-        const a = document.createElement('a');
-        a.href = firstSite.url;
-        a.target = '_blank';
-        a.rel = 'noopener noreferrer';
-        a.style.display = 'none';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-    }
+    urls.forEach(url => window.open(url, '_blank'));
 }
 
-// Enterキーでも検索できるように設定
-document.getElementById('searchInput').addEventListener('keypress', function (e) {
-    if (e.key === 'Enter') {
-        launchSearch();
-    }
+document.getElementById('searchInput').addEventListener('keypress', (e) => { 
+    if (e.key === 'Enter') launchSearch(); 
 });
 </script>
 
 </body>
 </html>
-
