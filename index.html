@@ -6,12 +6,18 @@
     <title>プロ向け商品リサーチツール</title>
     <style>
         body { font-family: "Helvetica Neue", Arial, sans-serif; background-color: #f4f7f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 450px; text-align: center; }
-        h1 { font-size: 1.5rem; color: #333; margin-bottom: 20px; }
+        .container { background: white; padding: 35px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 450px; text-align: center; }
+        h1 { font-size: 1.5rem; color: #333; margin-bottom: 25px; }
         input, select { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
-        button { width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; font-weight: bold; transition: background 0.3s; }
-        button:hover { background-color: #0056b3; }
-        .note { font-size: 12px; color: #666; margin-top: 15px; text-align: left; line-height: 1.5; background: #fff3cd; padding: 10px; border-radius: 6px; }
+        
+        /* ボタンエリアのレイアウト */
+        .button-group { display: flex; gap: 10px; margin-bottom: 20px; }
+        .btn-login { background-color: #6c757d; color: white; border: none; border-radius: 6px; padding: 12px; cursor: pointer; font-size: 14px; flex: 1; font-weight: bold; transition: background 0.3s; }
+        .btn-login:hover { background-color: #5a6268; }
+        .btn-search { background-color: #007bff; color: white; border: none; border-radius: 6px; padding: 12px; cursor: pointer; font-size: 16px; flex: 2; font-weight: bold; transition: background 0.3s; }
+        .btn-search:hover { background-color: #0056b3; }
+
+        .note { font-size: 12px; color: #666; margin-top: 15px; text-align: left; line-height: 1.6; background: #fff3cd; padding: 12px; border-radius: 6px; border-left: 4px solid #ffc107; }
         .highlight { color: #d9534f; font-weight: bold; }
     </style>
 </head>
@@ -19,6 +25,7 @@
 
 <div class="container">
     <h1>商品リサーチ検索</h1>
+    
     <input type="text" id="searchInput" placeholder="商品ID（型番）を入力" autofocus>
     
     <select id="genreSelect">
@@ -27,41 +34,67 @@
         <option value="スニーカー">スニーカー</option>
     </select>
 
-    <button onclick="launchSearch()">3サイトを一斉に開く</button>
+    <div class="button-group">
+        <button class="btn-login" onclick="openLogins()" title="ログインが切れている時に押してください">1. ログイン準備</button>
+        <button class="btn-search" onclick="launchSearch()">2. 3サイト一斉検索</button>
+    </div>
     
     <div class="note">
-        【使い方】<br>
-        1. 商品IDを入力し、ジャンルを選択して実行してください。<br>
-        2. <span class="highlight">e-auc</span>が開く際はIDが自動コピーされます。サイト上で貼り付けて検索してください。
+        <strong>【使いかた】</strong><br>
+        ① 最初に「1.ログイン準備」を押して、各サイトにログイン済か確認してください。<br>
+        ② IDを入力し、ジャンルを選んで「2.一斉検索」を押します。<br>
+        ③ <span class="highlight">e-auc</span>が開いたら、IDがコピーされているのでそのまま貼り付けて検索してください。
     </div>
 </div>
 
 <script>
+// 1. 各サイトのログイン/トップ画面をまとめて開く
+function openLogins() {
+    const loginUrls = [
+        "https://ssl.aucfan.com/aucfanpro/login",
+        "https://e-auc.brand-auc.com/marketPriceItems",
+        "https://soubakensaku.com/contents.php?c=login"
+    ];
+    loginUrls.forEach(url => {
+        window.open(url, '_blank');
+    });
+}
+
+// 2. 検索実行
 async function launchSearch() {
     const id = document.getElementById('searchInput').value.trim();
     const genre = document.getElementById('genreSelect').value;
     
-    if (!id) return alert("商品IDを入力してください。");
+    if (!id) {
+        alert("商品IDを入力してください。");
+        return;
+    }
 
+    // 検索ワードを「ID ジャンル」の形にする
     const fullQuery = id + " " + genre;
     const encodedQuery = encodeURIComponent(fullQuery);
 
-    // クリップボードにIDをコピー
-    try { await navigator.clipboard.writeText(id); } catch (err) {}
+    // クリップボードにIDをコピー（e-auc等への貼り付け用）
+    try {
+        await navigator.clipboard.writeText(id);
+    } catch (err) {
+        console.error('コピー失敗', err);
+    }
 
-    // すべてのジャンルで共通の3サイトを開く
+    // 検索用URLリスト
     const urls = [
-        // 1. soubakensaku.com (直接検索)
         `https://soubakensaku.com/contents.php?c=search_thumb_m&keyword=${encodedQuery}&name_search=partial`,
-        // 2. オークファンプロ (直接検索)
         `https://pro.aucfan.com/search/list?q=${encodedQuery}`,
-        // 3. e-auc (トップページを開く)
         `https://e-auc.brand-auc.com/marketPriceItems`
     ];
 
-    urls.forEach(url => window.open(url, '_blank'));
+    // すべてを一斉に開く
+    urls.forEach(url => {
+        window.open(url, '_blank');
+    });
 }
 
+// Enterキーでも検索実行
 document.getElementById('searchInput').addEventListener('keypress', (e) => { 
     if (e.key === 'Enter') launchSearch(); 
 });
