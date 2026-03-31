@@ -10,7 +10,6 @@
         h1 { font-size: 1.5rem; color: #333; margin-bottom: 25px; }
         input, select { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
         
-        /* ボタンエリアのレイアウト */
         .button-group { display: flex; gap: 10px; margin-bottom: 20px; }
         .btn-login { background-color: #6c757d; color: white; border: none; border-radius: 6px; padding: 12px; cursor: pointer; font-size: 14px; flex: 1; font-weight: bold; transition: background 0.3s; }
         .btn-login:hover { background-color: #5a6268; }
@@ -43,7 +42,7 @@
         <strong>【使いかた】</strong><br>
         ① 最初に「1.ログイン準備」を押して、各サイトにログイン済か確認してください。<br>
         ② IDを入力し、ジャンルを選んで「2.一斉検索」を押します。<br>
-        ③ <span class="highlight">e-auc</span>が開いたら、IDがコピーされているのでそのまま貼り付けて検索してください。
+        ③ IDは自動コピーされています。e-aucやスニダン等で必要なら貼り付けてください。
     </div>
 </div>
 
@@ -70,23 +69,39 @@ async function launchSearch() {
         return;
     }
 
-    // 検索ワードを「ID ジャンル」の形にする
+    const encodedId = encodeURIComponent(id);
     const fullQuery = id + " " + genre;
     const encodedQuery = encodeURIComponent(fullQuery);
 
-    // クリップボードにIDをコピー（e-auc等への貼り付け用）
+    // クリップボードにIDをコピー（手動貼り付け用）
     try {
         await navigator.clipboard.writeText(id);
     } catch (err) {
         console.error('コピー失敗', err);
     }
 
-    // 検索用URLリスト
-    const urls = [
-        `https://soubakensaku.com/contents.php?c=search_thumb_m&keyword=${encodedQuery}&name_search=partial`,
-        `https://pro.aucfan.com/search/list?q=${encodedQuery}`,
-        `https://e-auc.brand-auc.com/marketPriceItems`
-    ];
+    let urls = [];
+
+    // --- ジャンルごとに開く3サイトを出し分け ---
+    if (genre === "時計") {
+        urls = [
+            `https://soubakensaku.com/contents.php?c=search_thumb_m&keyword=${encodedQuery}&name_search=partial`,
+            `https://pro.aucfan.com/search/list?q=${encodedQuery}`,
+            `https://auctions.yahoo.co.jp/search/search?p=${encodedQuery}&va=${encodedQuery}&exflg=1&mode=2`
+        ];
+    } else if (genre === "バッグ") {
+        urls = [
+            `https://e-auc.brand-auc.com/marketPriceItems`,
+            `https://pro.aucfan.com/search/list?q=${encodedQuery}`,
+            `https://auctions.yahoo.co.jp/search/search?p=${encodedQuery}&va=${encodedQuery}&exflg=1&mode=2`
+        ];
+    } else if (genre === "スニーカー") {
+        urls = [
+            `https://snkrdunk.com/search/?keyword=${encodedId}`,
+            `https://search.rakuten.co.jp/search/mall/${encodedQuery}/`,
+            `https://auctions.yahoo.co.jp/search/search?p=${encodedQuery}&va=${encodedQuery}&exflg=1&mode=2`
+        ];
+    }
 
     // すべてを一斉に開く
     urls.forEach(url => {
@@ -94,7 +109,7 @@ async function launchSearch() {
     });
 }
 
-// Enterキーでも検索実行
+// Enterキー対応
 document.getElementById('searchInput').addEventListener('keypress', (e) => { 
     if (e.key === 'Enter') launchSearch(); 
 });
